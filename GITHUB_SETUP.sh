@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Instructions pour connecter le repository local à GitHub
+# Remplacez [YOUR-USERNAME] par votre nom d'utilisateur GitHub
+
+echo "=== Instructions pour créer le repository GitHub ==="
+echo ""
+echo "1. Allez sur https://github.com/new"
+echo "2. Nom du repository: bitchat-web" 
+echo "3. Description: BitChat Progressive Web App - Messagerie décentralisée P2P"
+echo "4. Choisissez Public ou Private"
+echo "5. NE PAS cocher 'Add a README file' (nous en avons déjà un)"
+echo "6. Cliquez 'Create repository'"
+echo ""
+echo "7. Ensuite, exécutez ces commandes (remplacez [YOUR-USERNAME]):"
+echo ""
+echo "cd /home/orlando/projetperso/celest/bitchat-web"
+echo "git branch -M main"
+echo "git remote add origin https://github.com/[YOUR-USERNAME]/bitchat-web.git"
+echo "git push -u origin main"
+echo ""
+echo "=== Alternative avec SSH (si configuré) ==="
+echo "git remote add origin git@github.com:[YOUR-USERNAME]/bitchat-web.git"
+echo "git push -u origin main"
+echo ""
+echo "=== Une fois pushé, vous pourrez déployer sur Vercel ==="
+echo "1. Allez sur vercel.com"
+echo "2. Connectez votre repository GitHub" 
+echo "3. Vercel détectera automatiquement la configuration"
+echo "4. Le site sera disponible sur https://bitchat-web.vercel.app"
