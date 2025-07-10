@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BitChat - Messagerie P2P Décentralisée</title>
+    <meta name="description" content="Messagerie sécurisée et décentralisée via Bluetooth mesh network">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000000">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAIklEQVRYhe3BMQEAAADCoPVPbQhfoAAAAAAAAAAAAAAAAIC3AcH0AAFjNpu1AAAAAElFTkSuQmCC">
+    <link rel="icon" type="image/png" sizes="16x16" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAIklEQVQ4je3BMQEAAADCoPVPbQhfoAAAAAAAAAAAAAAAAIC3AcH0AAGjNpu1AAAAAElFTkSuQmCC">
+    <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAj0lEQVR4nO3BMQEAAADCoPVPbQhfoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAODNAcH0AAHjNpu1AAAAAElFTkSuQmCC">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="styles/main.css">
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => console.log('SW registered'))
+                    .catch(err => console.log('SW registration failed'));
+            });
+        }
+    </script>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-container">
+            <div class="loading-logo">
+                <span class="logo-text">bitchat</span>
+            </div>
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+            </div>
+            <div class="loading-text" id="loading-text">Initialisation...</div>
+            <div class="loading-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div class="progress-steps" id="progress-steps">
+                    <div class="step active">🔐 Chiffrement</div>
+                    <div class="step">📡 Bluetooth</div>
+                    <div class="step">💬 Chat</div>
+                    <div class="step">🎨 Interface</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="app" class="app-hidden">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <button id="sidebar-toggle" class="sidebar-btn" aria-label="Menu">
+                    <span class="hamburger"></span>
+                </button>
+                <div class="app-logo" id="app-logo">
+                    <span class="logo-text">bitchat</span>
+                </div>
+            </div>
+            <div class="header-center">
+                <div class="connection-status">
+                    <span id="peer-count">0 pairs connectés</span>
+                    <div class="status-indicator" id="status-indicator"></div>
+                </div>
+            </div>
+            <div class="header-right">
+                <button id="settings-btn" class="icon-btn" aria-label="Paramètres">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97c0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1c0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66Z"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-content">
+                <div class="user-info">
+                    <div class="nickname-section">
+                        <label for="nickname-input">Pseudo :</label>
+                        <input type="text" id="nickname-input" placeholder="Votre pseudo" maxlength="32">
+                    </div>
+                </div>
+                
+                <div class="channels-section">
+                    <h3>Canaux</h3>
+                    <div id="channels-list" class="channels-list">
+                        <!-- Les canaux seront ajoutés dynamiquement -->
+                    </div>
+                </div>
+                
+                <div class="peers-section">
+                    <h3>Pairs connectés</h3>
+                    <div id="peers-list" class="peers-list">
+                        <!-- Les pairs seront ajoutés dynamiquement -->
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="chat-container">
+            <div class="chat-header">
+                <h2 id="current-channel">#général</h2>
+                <div class="chat-actions">
+                    <button id="clear-chat" class="text-btn">Effacer</button>
+                </div>
+            </div>
+            
+            <div class="messages-container" id="messages-container">
+                <div class="welcome-message">
+                    <h3>Bienvenue sur BitChat</h3>
+                    <p>Messagerie décentralisée P2P via Bluetooth mesh network.</p>
+                    <p>Commandes disponibles :</p>
+                    <ul>
+                        <li><code>/j #canal</code> - Rejoindre un canal</li>
+                        <li><code>/m @nom message</code> - Message privé</li>
+                        <li><code>/w</code> - Lister les utilisateurs</li>
+                        <li><code>/clear</code> - Effacer le chat</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="input-container">
+                <div class="command-suggestions" id="command-suggestions"></div>
+                <div class="input-wrapper">
+                    <input 
+                        type="text" 
+                        id="message-input" 
+                        placeholder="Tapez votre message ou une commande..."
+                        maxlength="1000"
+                        autocomplete="off"
+                    >
+                    <button id="send-btn" class="send-btn" aria-label="Envoyer">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Modals -->
+        <div id="password-modal" class="modal">
+            <div class="modal-content">
+                <h3>Canal protégé par mot de passe</h3>
+                <p>Entrez le mot de passe pour rejoindre <span id="password-channel"></span> :</p>
+                <input type="password" id="password-input" placeholder="Mot de passe">
+                <div class="modal-actions">
+                    <button id="password-cancel">Annuler</button>
+                    <button id="password-ok">OK</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="settings-modal" class="modal">
+            <div class="modal-content">
+                <h3>Paramètres</h3>
+                <div class="settings-section">
+                    <h4>Bluetooth</h4>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="auto-connect">
+                            Connexion automatique aux pairs
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="allow-discovery">
+                            Autoriser la découverte par d'autres appareils
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h4>Messages</h4>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="show-timestamps">
+                            Afficher les horodatages
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="enable-notifications">
+                            Activer les notifications
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button id="settings-close">Fermer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="toast-container"></div>
+
+        <!-- Bluetooth Warning -->
+        <div id="bluetooth-warning" class="bluetooth-warning hidden">
+            <div class="warning-content">
+                <h3>Bluetooth non disponible</h3>
+                <p>Cette version utilise WebRTC pour simuler les connexions mesh P2P.</p>
+                <p>L'API Web Bluetooth est limitée et ne permet pas les connexions mesh complètes.</p>
+                <button id="dismiss-warning">Compris</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/loading.js"></script>
+    <script src="js/crypto.js"></script>
+    <script src="js/cross-tab.js"></script>
+    <script src="js/bluetooth-service.js"></script>
+    <script src="js/chat-service.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

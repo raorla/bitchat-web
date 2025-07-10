@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BitChat Debug</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #000;
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+        }
+        .debug-section {
+            margin-bottom: 20px;
+            border: 1px solid #333;
+            padding: 10px;
+        }
+        .debug-section h3 {
+            color: #00ff00;
+            margin-top: 0;
+        }
+        .log-container {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            padding: 10px;
+            background: #111;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+        }
+        .log-error { color: #ff0000; }
+        .log-warn { color: #ffaa00; }
+        .log-info { color: #00aaff; }
+        .log-success { color: #00ff00; }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-red { background: #ff0000; }
+        .status-green { background: #00ff00; }
+        .status-yellow { background: #ffaa00; }
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 5px 10px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>BitChat Debug Console</h1>
+    
+    <div class="debug-section">
+        <h3>Service Status</h3>
+        <div>
+            <span class="status-indicator status-red" id="crypto-status"></span>
+            Crypto Service
+        </div>
+        <div>
+            <span class="status-indicator status-red" id="bluetooth-status"></span>
+            Bluetooth Service
+        </div>
+        <div>
+            <span class="status-indicator status-red" id="chat-status"></span>
+            Chat Service
+        </div>
+        <div>
+            <span class="status-indicator status-red" id="ui-status"></span>
+            UI Controller
+        </div>
+    </div>
+
+    <div class="debug-section">
+        <h3>Connection Info</h3>
+        <div>Peers discovered: <span id="peers-discovered">0</span></div>
+        <div>Peers connected: <span id="peers-connected">0</span></div>
+        <div>WebSocket status: <span id="websocket-status">Disconnected</span></div>
+        <div>Current channel: <span id="current-channel">#général</span></div>
+    </div>
+
+    <div class="debug-section">
+        <h3>Actions</h3>
+        <button onclick="testCrypto()">Test Crypto</button>
+        <button onclick="testWebSocket()">Test WebSocket</button>
+        <button onclick="simulatePeer()">Simulate Peer</button>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <button onclick="clearLogs()">Clear Logs</button>
+        <button onclick="exportLogs()">Export Logs</button>
+    </div>
+
+    <div class="debug-section">
+        <h3>Console Logs</h3>
+        <div id="log-container" class="log-container"></div>
+    </div>
+
+    <script>
+        // Override console methods to capture logs
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            info: console.info
+        };
+
+        const logs = [];
+        const logContainer = document.getElementById('log-container');
+
+        function addLog(level, message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = { timestamp, level, message };
+            logs.push(logEntry);
+
+            const logElement = document.createElement('div');
+            logElement.className = `log-entry log-${level}`;
+            logElement.textContent = `[${timestamp}] ${level.toUpperCase()}: ${message}`;
+            
+            logContainer.appendChild(logElement);
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            // Keep only last 100 logs
+            if (logs.length > 100) {
+                logs.shift();
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+
+        console.log = function(...args) {
+            const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+            addLog('info', message);
+            originalConsole.log(...args);
+        };
+
+        console.error = function(...args) {
+            const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+            addLog('error', message);
+            originalConsole.error(...args);
+        };
+
+        console.warn = function(...args) {
+            const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+            addLog('warn', message);
+            originalConsole.warn(...args);
+        };
+
+        console.info = function(...args) {
+            const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+            addLog('info', message);
+            originalConsole.info(...args);
+        };
+
+        // Status indicators
+        function updateStatus(service, status) {
+            const indicator = document.getElementById(`${service}-status`);
+            if (indicator) {
+                indicator.className = `status-indicator status-${status}`;
+            }
+        }
+
+        // Test functions
+        async function testCrypto() {
+            try {
+                console.log('Testing crypto service...');
+                const crypto = new CryptoService();
+                await crypto.init();
+                updateStatus('crypto', 'green');
+                console.log('Crypto test passed');
+            } catch (error) {
+                updateStatus('crypto', 'red');
+                console.error('Crypto test failed:', error);
+            }
+        }
+
+        function testWebSocket() {
+            try {
+                console.log('Testing WebSocket connection...');
+                const ws = new WebSocket(`ws://${window.location.host}/signaling`);
+                
+                ws.onopen = () => {
+                    console.log('WebSocket connected');
+                    document.getElementById('websocket-status').textContent = 'Connected';
+                    ws.close();
+                };
+                
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    document.getElementById('websocket-status').textContent = 'Error';
+                };
+                
+                ws.onclose = () => {
+                    console.log('WebSocket closed');
+                    document.getElementById('websocket-status').textContent = 'Disconnected';
+                };
+                
+            } catch (error) {
+                console.error('WebSocket test failed:', error);
+            }
+        }
+
+        function simulatePeer() {
+            console.log('Simulating peer connection...');
+            if (window.bitchatApp && window.bitchatApp.uiController && window.bitchatApp.uiController.chatService) {
+                const chatService = window.bitchatApp.uiController.chatService;
+                chatService.bluetoothService.simulatePeerDiscovery();
+            } else {
+                console.error('BitChat app not available');
+            }
+        }
+
+        function runAllTests() {
+            console.log('Running all tests...');
+            if (window.BitChatTest) {
+                window.BitChatTest.runAllTests();
+            } else {
+                console.error('Test suite not available');
+            }
+        }
+
+        function clearLogs() {
+            logs.length = 0;
+            logContainer.innerHTML = '';
+        }
+
+        function exportLogs() {
+            const logText = logs.map(log => `[${log.timestamp}] ${log.level.toUpperCase()}: ${log.message}`).join('\n');
+            const blob = new Blob([logText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bitchat-debug-${new Date().toISOString().slice(0, 19)}.log`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Monitor global objects
+        setInterval(() => {
+            if (window.bitchatApp) {
+                updateStatus('ui', 'green');
+                
+                const app = window.bitchatApp;
+                if (app.uiController) {
+                    const chatService = app.uiController.chatService;
+                    if (chatService) {
+                        updateStatus('chat', chatService.isInitialized ? 'green' : 'yellow');
+                        
+                        if (chatService.bluetoothService) {
+                            updateStatus('bluetooth', 'green');
+                            
+                            const discovered = chatService.bluetoothService.discoveredPeers.size;
+                            const connected = chatService.bluetoothService.peers.size;
+                            
+                            document.getElementById('peers-discovered').textContent = discovered;
+                            document.getElementById('peers-connected').textContent = connected;
+                        }
+                        
+                        if (chatService.cryptoService) {
+                            updateStatus('crypto', 'green');
+                        }
+                        
+                        document.getElementById('current-channel').textContent = chatService.currentChannel;
+                    }
+                }
+            }
+        }, 1000);
+
+        console.log('Debug console initialized');
+    </script>
+
+    <script src="js/crypto.js"></script>
+    <script src="js/bluetooth-service.js"></script>
+    <script src="js/chat-service.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+    <script src="test.js"></script>
+</body>
+</html>
